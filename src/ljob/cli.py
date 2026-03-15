@@ -1,4 +1,5 @@
 import typer
+from typing import Optional
 from rich.console import Console
 from rich.table import Table
 
@@ -38,8 +39,12 @@ def init():
 
 @profile_app.command("import")
 def profile_import(file_path: str):
-    import_profile_from_resume(file_path)
-    console.print(f"[green]已导入简历：{file_path}[/green]")
+    try:
+        import_profile_from_resume(file_path)
+        console.print(f"[green]已导入简历：{file_path}[/green]")
+    except (FileNotFoundError, OSError, ValueError) as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
 
 
 @profile_app.command("show")
@@ -53,8 +58,12 @@ def profile_show():
 
 @jobs_app.command("import")
 def jobs_import(file_path: str):
-    count = import_jobs(file_path)
-    console.print(f"[green]已导入 {count} 条职位[/green]")
+    try:
+        count = import_jobs(file_path)
+        console.print(f"[green]已导入 {count} 条职位[/green]")
+    except (FileNotFoundError, OSError, ValueError) as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
 
 
 @jobs_app.command("list")
@@ -72,21 +81,40 @@ def jobs_list():
 
 
 @jobs_app.command("analyze")
-def jobs_analyze(id: int = typer.Option(None), all: bool = typer.Option(False)):
+def jobs_analyze(
+    id: Optional[int] = typer.Option(None, "--id", help="职位 ID"),
+    all: bool = typer.Option(False, "--all", help="分析所有职位"),
+):
     if all:
         results = analyze_all_jobs()
-        console.print(results)
+        table = Table(title="Analyze All Jobs")
+        table.add_column("ID")
+        table.add_column("Title")
+        table.add_column("Required Skills")
+        table.add_column("Years")
+        for r in results:
+            parsed = r.get("parsed") or {}
+            skills = ", ".join(parsed.get("required_skills", []))
+            years = str(parsed.get("years_required") or "-")
+            table.add_row(str(r["id"]), r["title"], skills, years)
+        console.print(table)
         return
     if id is None:
         console.print("[red]请提供 --id 或使用 --all[/red]")
-        return
+        raise typer.Exit(1)
     result = analyze_job(id)
+    if result is None:
+        console.print(f"[red]找不到职位 ID={id}[/red]")
+        raise typer.Exit(1)
     console.print(result)
 
 
 @match_app.command("run")
 def match_run(job_id: int = typer.Option(..., "--job-id")):
     result = run_match(job_id)
+    if result is None:
+        console.print("[red]无法执行匹配，请先导入简历并分析职位[/red]")
+        raise typer.Exit(1)
     console.print(result)
 
 
@@ -109,17 +137,25 @@ def outreach_recruiter(job_id: int = typer.Option(..., "--job-id"), save: bool =
     result = recruiter_message(job_id)
     if result is None:
         console.print("[red]无法生成文案，请先导入简历并分析职位[/red]")
-        return
+        raise typer.Exit(1)
     console.print(result)
     if save:
-        path = save_recruiter_message(job_id)
-        console.print(f"[green]已保存：{path}[/green]")
+        try:
+            path = save_recruiter_message(job_id)
+            console.print(f"[green]已保存：{path}[/green]")
+        except OSError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
 
 
 @report_app.command("daily")
 def report_daily():
-    path = generate_daily_report()
-    console.print(f"[green]已生成日报：{path}[/green]")
+    try:
+        path = generate_daily_report()
+        console.print(f"[green]已生成日报：{path}[/green]")
+    except OSError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
 
 
 @auth_app.command("login")

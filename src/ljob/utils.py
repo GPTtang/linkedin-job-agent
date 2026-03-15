@@ -1,12 +1,12 @@
 import json
-from typing import Any
+from typing import Any, Optional
 
 
 def dumps(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False)
 
 
-def loads(data: str | None, default: Any):
+def loads(data: Optional[str], default: Any) -> Any:
     if not data:
         return default
     try:

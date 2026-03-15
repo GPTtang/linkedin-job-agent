@@ -16,16 +16,16 @@ def recruiter_message(job_id: int):
     skill_text = ", ".join(skills) if skills else "relevant technical skills"
 
     short_msg = (
-        f"Hi, I’m interested in the {job['title']} role at {job['company']}. "
-        f"My background aligns with {skill_text}, and I’m currently based in Japan. "
-        f"I’d be glad to share more if relevant."
+        f"Hi, I'm interested in the {job['title']} role at {job['company']}. "
+        f"My background aligns with {skill_text}, and I'm currently based in Japan. "
+        f"I'd be glad to share more if relevant."
     )
 
     full_msg = (
         f"Hi, I came across the {job['title']} role at {job['company']} and found it highly relevant.\n\n"
         f"I have a background in software / AI-related work, and my experience overlaps with {skill_text}. "
-        f"I’m also currently based in Japan, so the location context is a good fit.\n\n"
-        f"If this role is still open, I’d be happy to share my background and learn more.\n"
+        f"I'm also currently based in Japan, so the location context is a good fit.\n\n"
+        f"If this role is still open, I'd be happy to share my background and learn more.\n"
         f"Thank you."
     )
 
@@ -54,5 +54,8 @@ def save_recruiter_message(job_id: int):
         result["shorter_version"],
         "",
     ])
-    path.write_text(content, encoding="utf-8")
+    try:
+        path.write_text(content, encoding="utf-8")
+    except OSError as e:
+        raise OSError(f"保存外联文案失败：{e}")
     return str(path)

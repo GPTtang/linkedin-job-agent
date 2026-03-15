@@ -1,11 +1,10 @@
 from datetime import datetime
-from pathlib import Path
 from ..config import REPORTS_DIR
 from .jobs_service import list_jobs
 from .match_service import top_matches
 
 
-def generate_daily_report():
+def generate_daily_report() -> str:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     today = datetime.now().strftime("%Y-%m-%d")
     file_path = REPORTS_DIR / f"{today}.md"
@@ -28,5 +27,8 @@ def generate_daily_report():
         lines.append(f"- Job {row['job_id']}: {row['title']} @ {row['company']} | score={row['score']} | {row['decision']}")
 
     content = "\n".join(lines)
-    file_path.write_text(content, encoding="utf-8")
+    try:
+        file_path.write_text(content, encoding="utf-8")
+    except OSError as e:
+        raise OSError(f"生成报告失败：{e}")
     return str(file_path)

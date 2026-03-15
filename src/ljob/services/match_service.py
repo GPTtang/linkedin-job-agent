@@ -11,9 +11,9 @@ def run_match(job_id: int):
         return None
 
     parsed = loads(job["parsed_json"], {})
-    profile_skills = set([s.lower() for s in profile["skills"]])
-    required_skills = set([s.lower() for s in parsed.get("required_skills", [])])
-    preferred_skills = set([s.lower() for s in parsed.get("preferred_skills", [])])
+    profile_skills = {s.lower() for s in profile["skills"]}
+    required_skills = {s.lower() for s in parsed.get("required_skills", [])}
+    preferred_skills = {s.lower() for s in parsed.get("preferred_skills", [])}
 
     score = 30
     matched_required = profile_skills & required_skills
@@ -55,35 +55,39 @@ def run_match(job_id: int):
     }
 
     conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO job_matches (
-            job_id, score, decision, strengths_json, gaps_json, risks_json, next_actions_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        job_id,
-        result["score"],
-        result["decision"],
-        dumps(result["strengths"]),
-        dumps(result["gaps"]),
-        dumps(result["risks"]),
-        dumps(result["next_actions"]),
-    ))
-    conn.commit()
-    conn.close()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO job_matches (
+                job_id, score, decision, strengths_json, gaps_json, risks_json, next_actions_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            job_id,
+            result["score"],
+            result["decision"],
+            dumps(result["strengths"]),
+            dumps(result["gaps"]),
+            dumps(result["risks"]),
+            dumps(result["next_actions"]),
+        ))
+        conn.commit()
+    finally:
+        conn.close()
     return result
 
 
 def top_matches():
     conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT jm.job_id, j.title, j.company, jm.score, jm.decision
-        FROM job_matches jm
-        JOIN jobs j ON jm.job_id = j.id
-        ORDER BY jm.score DESC, jm.id DESC
-        LIMIT 20
-    """)
-    rows = cur.fetchall()
-    conn.close()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT jm.job_id, j.title, j.company, jm.score, jm.decision
+            FROM job_matches jm
+            JOIN jobs j ON jm.job_id = j.id
+            ORDER BY jm.score DESC, jm.id DESC
+            LIMIT 20
+        """)
+        rows = cur.fetchall()
+    finally:
+        conn.close()
     return rows
