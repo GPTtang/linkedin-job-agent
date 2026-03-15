@@ -26,7 +26,7 @@ def import_jobs(file_path: str) -> int:
         cur = conn.cursor()
         count = 0
         for item in items:
-            source_url = item.get("source_url", "")
+            source_url = item.get("source_url") or None
             if source_url:
                 cur.execute("SELECT id FROM jobs WHERE source_url = ?", (source_url,))
                 if cur.fetchone():
