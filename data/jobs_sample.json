@@ -1,0 +1,20 @@
+[
+  {
+    "source": "linkedin",
+    "source_url": "https://www.linkedin.com/jobs/view/example-1",
+    "title": "AI Backend Engineer",
+    "company": "Example AI Japan",
+    "location": "Tokyo, Japan",
+    "status": "saved",
+    "raw_text": "We are hiring an AI Backend Engineer in Tokyo. Requirements: Python, SQL, Docker, AWS, English. Nice to have: MCP, Agent systems. 3+ years experience. Visa support available."
+  },
+  {
+    "source": "linkedin",
+    "source_url": "https://www.linkedin.com/jobs/view/example-2",
+    "title": "Product Engineer",
+    "company": "Example Product KK",
+    "location": "Osaka, Japan",
+    "status": "saved",
+    "raw_text": "Looking for a Product Engineer. Required: React, TypeScript, English, Japanese. Nice to have AI and LLM experience."
+  }
+]
