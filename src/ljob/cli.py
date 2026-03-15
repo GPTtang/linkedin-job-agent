@@ -12,10 +12,13 @@ from .services.match_service import run_match, top_matches
 from .services.llm_service import analyze_job_with_llm, match_job_with_llm, generate_outreach_with_llm
 from .services.outreach_service import recruiter_message, save_recruiter_message
 from .services.report_service import generate_daily_report
+from .services.linkedin_content_service import generate_linkedin_content
+from .services.linkedin_automation import update_linkedin_profile, upload_linkedin_resume
 from .agent import run_agent
 
 app = typer.Typer(help="LinkedIn Job Agent CLI")
 agent_app = typer.Typer()
+linkedin_app = typer.Typer()
 console = Console()
 
 profile_app = typer.Typer()
@@ -26,6 +29,7 @@ report_app = typer.Typer()
 auth_app = typer.Typer()
 
 app.add_typer(agent_app, name="agent")
+app.add_typer(linkedin_app, name="linkedin")
 app.add_typer(profile_app, name="profile")
 app.add_typer(jobs_app, name="jobs")
 app.add_typer(match_app, name="match")
@@ -85,6 +89,88 @@ def outreach_recruiter_llm(
         ])
         path.write_text(content, encoding="utf-8")
         console.print(f"[green]已保存：{path}[/green]")
+
+
+@linkedin_app.command("generate")
+def linkedin_generate():
+    """用 LLM 根据简历生成优化后的 LinkedIn Headline / About / Skills，预览不更新。"""
+    console.print("[cyan]正在用 LLM 生成 LinkedIn 优化内容...[/cyan]")
+    content = generate_linkedin_content()
+    if not content:
+        console.print("[red]请先导入简历：python main.py profile import <file>[/red]")
+        raise typer.Exit(1)
+    console.rule("[bold]Headline[/bold]")
+    console.print(content["headline"])
+    console.rule("[bold]About[/bold]")
+    console.print(content["about"])
+    console.rule("[bold]Skills[/bold]")
+    console.print(", ".join(content["skills"]))
+
+
+@linkedin_app.command("sync")
+def linkedin_sync(
+    dry_run: bool = typer.Option(False, "--dry-run", help="只生成内容，不更新 LinkedIn"),
+):
+    """
+    用 LLM 优化 LinkedIn Headline 和 About，并通过浏览器自动更新。
+    需要已登录：python main.py auth login
+    """
+    console.print("[cyan]Step 1/2  正在用 LLM 生成优化内容...[/cyan]")
+    content = generate_linkedin_content()
+    if not content:
+        console.print("[red]请先导入简历：python main.py profile import <file>[/red]")
+        raise typer.Exit(1)
+
+    console.print("\n[bold]将更新以下内容：[/bold]")
+    console.print(f"  Headline : {content['headline']}")
+    console.print(f"  About    : {content['about'][:80]}...")
+
+    if dry_run:
+        console.print("\n[yellow]--dry-run 模式，跳过实际更新[/yellow]")
+        console.rule("完整 About")
+        console.print(content["about"])
+        return
+
+    console.print("\n[cyan]Step 2/2  正在通过浏览器更新 LinkedIn 主页...[/cyan]")
+    result = update_linkedin_profile(
+        headline=content["headline"],
+        about=content["about"],
+    )
+
+    if result["headline_updated"]:
+        console.print("[green]✓ Headline 更新成功[/green]")
+    else:
+        console.print("[yellow]✗ Headline 自动更新失败，请手动粘贴：[/yellow]")
+        console.print(f"  {content['headline']}")
+
+    if result["about_updated"]:
+        console.print("[green]✓ About 更新成功[/green]")
+    else:
+        console.print("[yellow]✗ About 自动更新失败，请手动粘贴：[/yellow]")
+        console.print(content["about"])
+
+    for err in result["errors"]:
+        console.print(f"[red]  {err}[/red]")
+
+
+@linkedin_app.command("upload-resume")
+def linkedin_upload_resume(
+    file_path: str = typer.Argument(..., help="简历文件路径（.pdf / .doc / .docx）"),
+):
+    """
+    上传简历文件到 LinkedIn Easy Apply 简历库。
+    需要已登录：python main.py auth login
+    """
+    console.print(f"[cyan]正在上传简历：{file_path}[/cyan]")
+    result = upload_linkedin_resume(file_path)
+
+    if result["uploaded"]:
+        console.print("[green]✓ 简历上传成功[/green]")
+    else:
+        console.print("[red]✗ 简历上传失败[/red]")
+
+    for err in result["errors"]:
+        console.print(f"[red]  {err}[/red]")
 
 
 @app.command()
