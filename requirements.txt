@@ -2,3 +2,4 @@ typer==0.16.0
 rich==14.1.0
 pydantic==2.11.7
 playwright==1.55.0
+anthropic>=0.84.0

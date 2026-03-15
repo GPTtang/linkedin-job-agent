@@ -32,6 +32,53 @@ playwright install chromium
 
 ---
 
+## Agent 一键运行（推荐）
+
+设置 API Key 后，一条命令完成全流程：
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key"
+
+python main.py init
+python main.py profile import ./data/resume_sample.md
+python main.py jobs import ./data/jobs_sample.json
+python main.py agent run
+```
+
+Agent 自动完成：LLM 分析所有 JD → LLM 匹配评分 → 为推荐职位生成个性化外联文案 → 输出日报。
+
+```bash
+# 为前 5 个匹配职位生成文案（默认 3 个）
+python main.py agent run --top-n 5
+```
+
+---
+
+## 手动命令（逐步控制）
+
+### LLM 版命令
+
+```bash
+# LLM 分析单条 JD
+python main.py jobs analyze-llm --id 1
+
+# LLM 匹配评分
+python main.py match run-llm --job-id 1
+
+# LLM 生成个性化私信
+python main.py outreach recruiter-llm --job-id 1 --save
+```
+
+### 规则版命令（无需 API Key）
+
+```bash
+python main.py jobs analyze --id 1
+python main.py match run --job-id 1
+python main.py outreach recruiter --job-id 1
+```
+
+---
+
 ## 快速开始
 
 ### 1. 初始化

@@ -9,10 +9,13 @@ from .auth import login_linkedin, auth_status, logout_linkedin
 from .services.profile_service import import_profile_from_resume, get_profile
 from .services.jobs_service import import_jobs, list_jobs, analyze_job, analyze_all_jobs
 from .services.match_service import run_match, top_matches
+from .services.llm_service import analyze_job_with_llm, match_job_with_llm, generate_outreach_with_llm
 from .services.outreach_service import recruiter_message, save_recruiter_message
 from .services.report_service import generate_daily_report
+from .agent import run_agent
 
 app = typer.Typer(help="LinkedIn Job Agent CLI")
+agent_app = typer.Typer()
 console = Console()
 
 profile_app = typer.Typer()
@@ -22,12 +25,66 @@ outreach_app = typer.Typer()
 report_app = typer.Typer()
 auth_app = typer.Typer()
 
+app.add_typer(agent_app, name="agent")
 app.add_typer(profile_app, name="profile")
 app.add_typer(jobs_app, name="jobs")
 app.add_typer(match_app, name="match")
 app.add_typer(outreach_app, name="outreach")
 app.add_typer(report_app, name="report")
 app.add_typer(auth_app, name="auth")
+
+
+@agent_app.command("run")
+def agent_run(top_n: int = typer.Option(3, "--top-n", help="为前 N 个匹配职位生成文案")):
+    """一键运行完整 Agent 工作流（LLM 分析 → 匹配 → 外联文案 → 日报）"""
+    run_agent(top_n=top_n)
+
+
+@jobs_app.command("analyze-llm")
+def jobs_analyze_llm(id: int = typer.Option(..., "--id", help="职位 ID")):
+    """用 LLM 分析单条职位 JD"""
+    console.print(f"[cyan]正在用 LLM 分析职位 {id}...[/cyan]")
+    result = analyze_job_with_llm(id)
+    if result is None:
+        console.print(f"[red]找不到职位 ID={id}[/red]")
+        raise typer.Exit(1)
+    console.print(result)
+
+
+@match_app.command("run-llm")
+def match_run_llm(job_id: int = typer.Option(..., "--job-id")):
+    """用 LLM 对单条职位进行匹配评分"""
+    console.print(f"[cyan]正在用 LLM 评分职位 {job_id}...[/cyan]")
+    result = match_job_with_llm(job_id)
+    if result is None:
+        console.print("[red]无法评分，请先导入简历并分析职位[/red]")
+        raise typer.Exit(1)
+    console.print(result)
+
+
+@outreach_app.command("recruiter-llm")
+def outreach_recruiter_llm(
+    job_id: int = typer.Option(..., "--job-id"),
+    save: bool = typer.Option(False),
+):
+    """用 LLM 生成个性化 recruiter 私信"""
+    console.print(f"[cyan]正在用 LLM 生成外联文案...[/cyan]")
+    result = generate_outreach_with_llm(job_id)
+    if result is None:
+        console.print("[red]无法生成文案，请先导入简历并分析职位[/red]")
+        raise typer.Exit(1)
+    console.print(result)
+    if save:
+        from .config import OUTREACH_DIR
+        OUTREACH_DIR.mkdir(parents=True, exist_ok=True)
+        path = OUTREACH_DIR / f"recruiter_job_{job_id}.md"
+        content = "\n".join([
+            f"# {result['subject']}", "",
+            "## Standard", "", result["message"], "",
+            "## Shorter Version", "", result["shorter_version"], "",
+        ])
+        path.write_text(content, encoding="utf-8")
+        console.print(f"[green]已保存：{path}[/green]")
 
 
 @app.command()
